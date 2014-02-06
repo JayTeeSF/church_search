@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+
+
+begin
+  require 'rubygems'
+  gem 'church_search'
+  require 'church_search'
+rescue LoadError
+  require File.expand_path( '../../lib/church_search/news.rb', __FILE__ )
+end
+require 'optparse'
+
+options = {}
+options["verbose"] = false
+
+opt_parser = OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} [OPTIONS]"
+
+  opts.on( "-s [SEARCH_TOPIC]", "--search_topic [SEARCH_TOPIC]", "specify topic to search") do |s|
+    options[:search_topic] = s
+  end
+
+  options["output_format"] = :csv
+  opts.on( "-o [OUTPUT_FORMAT]", "--output_format [OUTPUT_FORMAT]", "choose output format") do |o|
+    options["output_format"] = o.match(/csv/i) ? :csv : :pretty
+  end
+
+  opts.on( "-v", '--verbose', "turn on verbosity") do
+    options["verbose"] = true
+  end
+
+  opts.on_tail( '-h', '--help', 'This help screen' ) do
+    puts opts
+    exit
+  end
+end
+
+opt_parser.parse!
+
+
+format = options.delete("output_format")
+search_topic = options.delete(:search_topic)
+results = ChurchSearch::News.overhear( search_topic )
+
+puts "id\tfrom\tto\ttweets" if (:csv == format)
+results.each_with_index do |object, idx|
+  if object.is_a?(Twitter::Tweet) && tweet = object
+    if :csv == format
+      puts "#{tweet.id}\t#{tweet.user.screen_name}\t#{tweet.in_reply_to_screen_name}\t#{tweet.text}"
+    else
+      puts "tweet ##{tweet.id}\n\tfrom: #{tweet.user.screen_name}\n\tto: #{tweet.in_reply_to_screen_name}\n\tsays: #{tweet.text}"
+    end
+  end
+end
+
+exit
